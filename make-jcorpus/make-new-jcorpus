@@ -1,0 +1,166 @@
+#!/bin/bash
+
+#   make-new-jcorpus JROOT SOURCE...
+
+# Builds a new jcorpus at JROOT (absolute path)
+# from the SOURCE locations, all of which must be absolute locations
+# that have the xtreemfs file structure.
+# If no SOURCE locations are listed, it takes the source locations from stdin,
+# one per line.
+# If JROOT already exists, it must be an empty directory.
+
+# Each SOURCE must be a full source file name or directory name.
+# The highest directory (in the first SOURCE (*2)) that contains the substring
+# "xtreemfs" is the "xtreemfs directory" (*1).
+# SOURCE can be a regular tarball, a buildResults tarball, or a directory
+# that is recursively searched (not following symlinks) for regular and
+# buildResults tarballs.
+
+# The lists of regular and buildResults tarballs are written to
+# files in /tmp and then make-full-jcorpus is called.
+
+# (*1) An "xtreemfs directory" has this directory structure under it:
+#       x/x/x/x/x/x/x/x/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/buildResults/
+#     where "x" is a hex digit.
+#     Tarballs in x/x/x/x/x/x/x/x/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/
+#     with names
+#        xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.tgz
+#        xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_metadata.tgz
+#        xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_code.tgz
+#     are "regular tarballs".
+#     The "buildResults" directory is optional; if it exists,
+#     tarballs with the name
+#        xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_UCI_build.tgz
+#     are "buildResults tarballs".
+
+# (*2) A current limitation is that all the SOURCE locations
+# must be in the same xtreemfs directory.
+
+
+# exit if anything gets a non-zero status
+set -e
+# error if expanding an unset variable
+set -u
+
+# current script dir  (currently "$MUSE"/tools/make-jcorpus )
+X_SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+JROOT="$1"; shift
+
+# If there are no source locations as arguments, it will read them from stdin.
+# In the code, $CURR_ARG is the current argument, whether it came
+# from the command line or from the standard input.
+if [ $# -eq 0 ]
+then
+  STDIN_ARGS=true
+else
+  STDIN_ARGS=false
+fi
+
+
+if [[ -e "$JROOT" ]]
+then
+  # if it exists, it must be a directory that is writable and empty
+  if [[ -d "$JROOT" && -w "$JROOT" && -n `find "$JROOT" -maxdepth 0 -empty` ]]
+  then
+    : # OK
+  else
+    echo 'Error: JROOT, if it exists, must be an empty, writable directory: ' "$JROOT"
+    exit 2
+  fi
+else
+  mkdir "$JROOT" || exit 2
+fi
+
+TMP_REG=`mktemp -p /tmp reg.XXX`
+TMP_BR=`mktemp -p /tmp br.XXX`
+
+REG_PAT_1='^/.*/[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}\.tgz$'
+REG_PAT_2='^/.*/[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}_metadata\.tgz$'
+REG_PAT_3='^/.*/[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}_code\.tgz$'
+BR_PAT_1='^/.*/[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}_UCI_build\.tgz$'
+
+is_reg_tarball ()
+{
+  [[ "$1" =~ $REG_PAT_1 || "$1" =~ $REG_PAT_2 || "$1" =~ $REG_PAT_3 ]]
+}
+
+is_br_tarball ()
+{
+  [[ "$1" =~ $BR_PAT_1 ]]
+}
+
+remember_tarball ()
+{
+  if `is_reg_tarball "$1"`
+  then
+    echo "$1" >> $TMP_REG
+  elif `is_br_tarball "$1"`
+  then
+    echo "$1" >> $TMP_BR
+  fi
+}
+
+FIRSTARGPAT='^(.*/[^/]*xtreemfs[^/]*)/'
+
+# this next phrase is repeated in the main loop,
+# but since it refers to the main shell script $1,
+# I can't put it in a function.
+if [ "$STDIN_ARGS" = true ]
+then
+  # Because of set -e, if this gets EOF the script will just exit.
+  # But we will make an exit alternative just for safety.
+  read CURR_ARG || exit 2
+else
+  CURR_ARG=$1; shift
+fi
+# The first arg determines the xtreemfs directory.
+if [[ "$CURR_ARG" =~ $FIRSTARGPAT ]]
+then
+  XROOT="${BASH_REMATCH[1]}"
+else
+  echo 'ERROR: path given does not have an xtreemfs directory: ' "$FIRSTARG"
+fi
+
+
+# collect tarballs
+# while [ $# -ne 0 ]
+while [ "$CURR_ARG" != "" ]
+do
+    if [[ "$CURR_ARG" != "${XROOT}/"* ]]
+    then
+        echo 'ERROR: path given does not start with XROOT: ' "$CURR_ARG"
+        exit 2
+    fi
+    # find the tarballs at this location
+    find "$CURR_ARG" | while read file; do
+      remember_tarball $file
+    done
+    # get the next location
+    if [ "$STDIN_ARGS" = true ]
+    then
+      # if at EOF, set it to the empty string
+      read CURR_ARG || CURR_ARG=""
+    else
+      if [ $# -ne 0 ]
+      then
+        CURR_ARG=$1; shift
+      else
+        CURR_ARG=""
+      fi
+    fi
+done
+
+echo
+echo Wrote regular and buildResults tarball lists to:
+echo $TMP_REG and $TMP_BR
+echo
+echo Building jcorpus...
+echo
+
+"$X_SCRIPTDIR"/make-full-jcorpus $XROOT $JROOT $TMP_REG $TMP_BR
+
+echo
+echo Done building jcorpus.
+echo You might want to remove the tarball lists:
+echo "  " rm $TMP_REG $TMP_BR

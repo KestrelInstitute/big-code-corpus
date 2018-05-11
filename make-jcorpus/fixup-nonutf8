@@ -1,0 +1,178 @@
+#!/bin/bash
+
+# current script dir  (currently "$MUSE"/tools/make-jcorpus )
+X_SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+JROOT="$1"
+
+# Things to do for V4.2 after expanding and merging tars
+
+PDIR1="$JROOT"/0/2/3/5/c/5/6/2/0235c562-758d-4276-809b-0f8fa252ddc8
+if [[ -d "$PDIR1" ]]
+then
+  cd "$PDIR1"
+  echo 1. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR2="$JROOT"/0/8/3/7/1/3/9/c/0837139c-1f13-4c73-8266-50ef5b5075fd
+if [[ -d "$PDIR2" ]]
+then
+  echo 2. rm -rf "$PDIR2"
+  rm -rf "$PDIR2"
+fi
+
+PDIR3="$JROOT"/0/c/6/d/1/7/9/d/0c6d179d-5dc4-4618-a817-33dcada20e9b
+if [[ -d "$PDIR3" ]]
+then
+  echo 3. rm -rf "$PDIR3"
+  rm -rf "$PDIR3"
+fi
+
+PDIR4="$JROOT"/1/1/8/2/2/8/5/7/11822857-42f0-4c5e-b0f4-494977c9011e
+if [[ -d "$PDIR4" ]]
+then
+  cd "$PDIR4"
+  echo 4. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR5="$JROOT"/1/f/a/7/f/6/0/5/1fa7f605-4117-4891-af77-91a225ae9ff8
+if [[ -d "$PDIR5" ]]
+then
+  cd "$PDIR5"
+  echo 5. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR6="$JROOT"/1/f/c/0/f/6/7/e/1fc0f67e-58a6-405c-b826-76750ea56155/latest/src/ita23/projekt/mud/rooms/implementations
+if [[ -d "$PDIR6" ]]
+then
+  cd "$PDIR6"
+  echo 6. rm -f "EimerR$(printf '\344')tsel.java"
+  rm -f "EimerR$(printf '\344')tsel.java"
+fi
+
+PDIR7="$JROOT"/2/a/d/c/c/7/b/7/2adcc7b7-3e39-46e4-a0d6-f37dea27c65d
+if [[ -d "$PDIR7" ]]
+then
+  cd "$PDIR7"
+  echo 7. convmv --notest -r -f shiftjis -t utf8 .
+  convmv --notest -r -f shiftjis -t utf8 .
+fi
+
+PDIR8="$JROOT"/2/e/a/4/c/6/6/e/2ea4c66e-2770-4e48-8068-d5600a8cefc2
+if [[ -d "$PDIR8" ]]
+then
+  cd "$PDIR8"
+  echo 8. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR9="$JROOT"/4/7/5/c/6/b/4/e/475c6b4e-9dfd-4c84-b289-99d4d20ed721
+if [[ -d "$PDIR9" ]]
+then
+  echo 9. rm -rf "$PDIR9"
+  rm -rf "$PDIR9"
+fi
+
+PDIR10="$JROOT"/5/f/0/b/f/4/6/8/5f0bf468-776c-4700-87df-31dac3e380a7
+if [[ -d "$PDIR10" ]]
+then
+  cd "$PDIR10"
+  echo 10. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR11="$JROOT"/6/c/b/a/9/7/0/d/6cba970d-38a1-4740-a109-51ac7ba9c9d3
+if [[ -d "$PDIR11" ]]
+then
+  echo 11. rm -rf "$PDIR11"
+  rm -rf "$PDIR11"
+fi
+
+PDIR12="$JROOT"/7/e/9/4/a/a/a/4/7e94aaa4-fbfc-11e4-9565-4730c2106081
+if [[ -d "$PDIR12" ]]
+then
+  cd "$PDIR12"
+  echo 12. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR13="$JROOT"/8/2/a/c/4/8/e/1/82ac48e1-e710-4d65-8f40-9d98b0bfe87a
+if [[ -d "$PDIR13" ]]
+then
+  cd "$PDIR13"
+  echo 13. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR14="$JROOT"/9/a/f/4/4/0/5/d/9af4405d-2a83-401f-b5f6-104fba15b96d
+if [[ -d "$PDIR4" ]]
+then
+  cd "$PDIR14"
+  echo 14. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR15="$JROOT"/a/1/c/1/d/2/9/2/a1c1d292-3780-4bc8-9f7d-83d0d33555cd
+if [[ -d "$PDIR15" ]]
+then
+  echo 15. rm -rf "$PDIR15"
+  rm -rf "$PDIR15"
+fi
+
+PDIR16="$JROOT"/b/1/9/f/b/2/9/7/b19fb297-f23e-4149-82f1-e5418ef65b97
+if [[ -d "$PDIR16" ]]
+then
+  cd "$PDIR16"
+  echo 16. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR17="$JROOT"/b/8/c/a/5/1/0/3/b8ca5103-16c2-4ec8-a06d-2a9bdc49f4a8
+if [[ -d "$PDIR17" ]]
+then
+  echo 17. rm -rf "$PDIR17"
+  rm -rf "$PDIR17"
+fi
+
+PDIR18="$JROOT"/b/e/9/d/b/1/e/8/be9db1e8-f1eb-4a7f-94ae-fb770c7a9d36
+if [[ -d "$PDIR18" ]]
+then
+  cd "$PDIR18"
+  echo 18. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR19="$JROOT"/c/4/5/8/b/8/1/9/c458b819-9307-405d-9372-3371dcd958b8
+if [[ -d "$PDIR19" ]]
+then
+  cd "$PDIR19"
+  echo 19. convmv --notest -r -f cp850 -t utf8 .
+  convmv --notest -r -f cp850 -t utf8 .
+fi
+
+PDIR20="$JROOT"/c/b/1/b/2/2/0/d/cb1b220d-b8bf-42f1-b45e-9383a0c5732d/latest
+if [[ -d "$PDIR20" ]]
+then
+  cd "$PDIR20"
+  echo 20. rm -f "bin/H$(printf '\345')nd.class" "src/H$(printf '\345')nd.java"
+  rm -f "bin/H$(printf '\345')nd.class" "src/H$(printf '\345')nd.java"
+fi
+
+PDIR21="$JROOT"/d/a/7/6/a/d/1/c/da76ad1c-fbf8-11e4-bfca-134fcba462aa
+if [[ -d "$PDIR21" ]]
+then
+  cd "$PDIR21"
+  echo 21. convmv --notest -r -f iso-8859-1 -t utf8 .
+  convmv --notest -r -f iso-8859-1 -t utf8 .
+fi
+
+PDIR22="$JROOT"/d/d/9/f/1/7/6/2/dd9f1762-ee56-4ab2-8ce1-33cdb58dfb16
+if [[ -d "$PDIR22" ]]
+then
+  cd "$PDIR22"
+  echo 22. rm -rf latest/engine/schema/src/org/apache?cloudstack
+  rm -rf latest/engine/schema/src/org/apache?cloudstack
+fi

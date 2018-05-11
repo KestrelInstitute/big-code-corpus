@@ -1,0 +1,409 @@
+#!/bin/bash
+
+#   make-full-jcorpus [-i] XROOT JROOT REG_FILE BR_FILE
+
+# The "full" in this script's name means that
+# the tarball lists are fully specified and then the
+# jcorpus is fully built: tar extraction, tar merge, jar extraction,
+# and classcentral building.
+
+# -i means "interactive"---asks whether to continue at various points.
+#   If -i is not included, then the user is not asked any questions.
+# XROOT (absolute path) is the root of the xtreemfs filesystem
+#   (currently /muse/xtreemfs-V4_2)
+# JROOT (absolute path) is the destination jcorpus location.
+#   It is best to create a new one right before calling this script,
+#   as in the call pattern below.
+# REG_FILE is a list of regular (non-buildresults) tarballs (absolute paths)
+# BR_FILE is alist of buildresults tarballs (absolute paths)
+
+# Suggested Call Pattern:
+# 1. Create the jcorpus directory and give it your permissions:
+#    mkdir <jroot>
+#    - or, if necessary:
+#    sudo mkdir <jroot> ; sudo chown $USER:$USER <jroot>
+# 2. Run it:
+#    ./make-full-jcorpus -i <xroot> <jroot> <reg_file> <br_file>
+# 3. Protect it:
+#    chmod -R a-w <jroot>
+
+# See also make-new-jcorpus.
+
+
+# Number of CPUS to use.  TODO: allow changing this with a parameter.
+# Also note that some of the steps split into 8 pieces regardless of
+# this parameter.
+NUM_CPUS=8
+
+
+echo "Running make-full-jorpus in process $$."
+echo "Use kill -HUP -$$ to kill this along with its subprocesses."
+
+usage(){
+	echo "Usage: $0 [-i] <xroot> <jroot> <reg_file> <br_file>"
+	echo "  -i (optional) turns on interactive mode."
+	echo "  xroot and jroot must be absolute."
+	echo "  Every entry in each file must start with xroot."
+	echo "  Every entry in <br-file> must be a buildResults tarball."
+	exit 1
+}
+
+
+if [ $1 == "-i" ]
+then
+    INTERACTIVE=on
+    shift
+else
+    INTERACTIVE=off
+fi
+
+# Check the number of arguments supplied (other than the optional "-i"):
+if [ $# -ne 4 ]
+then
+	usage
+fi
+
+# current script dir  (currently "$MUSE"/tools/make-jcorpus )
+X_SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+XROOT="$1"
+JROOT="$2"
+REGFILE="$3"
+BRFILE="$4"
+
+echo REGFILE $REGFILE
+echo BRFILE $BRFILE
+
+# Check that xroot is absolute
+if [[ ! $XROOT =~ ^/ ]]
+then
+  usage
+fi
+
+# Check that jroot is absolute
+if [[ ! $JROOT =~ ^/ ]]
+then
+  usage
+fi
+
+# Check that REGFILE is a regular file
+if [[ ! -f "$REGFILE" ]]
+then
+  usage
+fi
+
+# Check that BRFILE is a regular file
+if [[ ! -f "$BRFILE" ]]
+then
+  usage
+fi
+
+# check that every regular tarball file or directory starts with xroot
+# (Note that the "" on the right side of =~ inhibits regex metachars.)
+for REG in `cat $REGFILE`
+do
+  if [[ ! "$REG" =~ ^"$XROOT" ]]
+  then
+    usage
+  fi
+done
+
+# check that every buildresults tarball file starts with xroot
+# and ends with "_UCI_build.tgz"
+# (on 2016-05-17, added the "_build" part)
+# (on 2016-10-13, changed "_build" to "_UCI_build"
+for BR in `cat $BRFILE`
+do
+  if [[ ! "$BR" =~ ^"$XROOT".*"_UCI_build.tgz"$ ]]
+  then
+    usage
+  fi
+done
+
+confirm () {
+    # call with a prompt string or use a default
+    read -r -p "${1:-Are you sure? [y/N]} " response
+    case $response in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+# NOTE, there used to be code that added a slash on the end of jroot
+# if it didn't have it.  However, I think a change to extractor.perl
+# made that no longer needed, and it makes the output look bad.
+# I took it out.  - Eric M.
+## No longer makes this check, since we now advise making jroot prior
+## to calling this script.  TODO: A possible replacement check would be to
+## make sure it is empty and has the right permissions.
+# # If jroot exists, warn.  If it does not exist, create it.
+# if [[ -d $JROOT ]]
+# then
+#   echo -n "WARNING: Are you sure you want to build the full jcorpus into an existing directory? " 1>&2
+#   confirm "[y/N]" || exit 0
+# else
+#   mkdir -p "$JROOT"
+# fi
+
+export X_SCRIPTDIR XROOT JROOT
+
+
+# ------------
+# Make the logs and work subdirectories
+# under JROOT.
+
+# First make the parent logs and work dirs, if not already there.
+mkdir -p "$JROOT"/logs
+mkdir -p "$JROOT"/work
+
+# Make the current logs and work dirs
+LOGDIR=`mktemp -d -p "$JROOT"/logs $(date --iso-8601)_XXX`
+WORKDIR=`mktemp -d -p "$JROOT"/work $(date --iso-8601)_XXX`
+chmod go+rx $LOGDIR
+chmod go+rx $WORKDIR
+
+echo LOGDIR $LOGDIR
+echo WORKDIR $WORKDIR
+
+
+# ------------
+# The main extractor (no longer builds jarcentral as part of this)
+
+# Split the non-buildResult tarball list into chunks
+split -n l/$NUM_CPUS  $REGFILE $WORKDIR/tarball.chunk
+
+# Extract every non-buildResult tarball listed in the chunkfile
+do_tarball_chunk () {
+  for FIL in `cat $1`
+  do
+    if [[ -d "$FIL" ]]
+    then
+      if [[ ! "$FIL" = */ ]]
+      then
+	FIL="$FIL"/
+      fi
+    fi
+    echo perl "$X_SCRIPTDIR"/tarextractor.perl -e="$JROOT"/errorfiles "$FIL"
+    perl "$X_SCRIPTDIR"/tarextractor.perl -e="$JROOT"/errorfiles "$FIL"
+  done
+}
+
+echo  `date` ": expanding main tarballs"
+for cf in $WORKDIR/tarball.chunk*
+do
+  # delete the prefix of cf up through the last slash,
+  # so it is left with the basename
+  outlog="${LOGDIR}/${cf##*/}.out"
+  errlog="${LOGDIR}/${cf##*/}.err"
+  do_tarball_chunk $cf > $outlog 2> $errlog &
+done
+wait
+
+
+# ------------
+# The buildResults extractor
+
+# Split the buildResult tarball list into chunks
+split -n l/$NUM_CPUS $BRFILE $WORKDIR/brtarball.chunk
+
+# Extract every buildResult tarball listed in the chunkfile
+do_br_tarball_chunk () {
+  for FIL in `cat $1`
+  do
+    if [[ -d "$FIL" ]]
+    then
+      if [[ ! "$FIL" = */ ]]
+      then
+	FIL="$FIL"/
+      fi
+    fi
+    echo perl "$X_SCRIPTDIR"/tarextractor.perl -e="$JROOT"/errorfiles -br "$FIL"
+    perl "$X_SCRIPTDIR"/tarextractor.perl -e="$JROOT"/errorfiles -br "$FIL"
+  done
+}
+
+echo  `date` ": expanding buildResults tarballs"
+for cf in $WORKDIR/brtarball.chunk*
+do
+  # delete the prefix of cf up through the last slash,
+  # so it is left with the basename
+  outlog="${LOGDIR}/${cf##*/}.out"
+  errlog="${LOGDIR}/${cf##*/}.err"
+  do_br_tarball_chunk $cf > $outlog 2> $errlog &
+done
+wait
+
+
+# Fix permissions.
+# Some directories do not have write permission.
+echo  `date` ": fixing permissions after tar extractions"
+chmod -R u+rw "$JROOT"
+
+
+if [ $INTERACTIVE == "on" ]
+then
+    echo -n "About to merge main and buildResults.  Continue? " 1>&2
+    confirm "[y/N]" || exit 0
+fi
+
+
+# ------------
+# Merge buildResults into main project directories
+
+echo  `date` ": merging main and buildResults expansions"
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[01]` ]]
+then
+  find "$JROOT"/[01] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_01.out 2> ${LOGDIR}/tarmerge_01.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[23]` ]]
+then
+  find "$JROOT"/[23] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_23.out 2> ${LOGDIR}/tarmerge_23.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[45]` ]]
+then
+  find "$JROOT"/[45] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_45.out 2> ${LOGDIR}/tarmerge_45.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[67]` ]]
+then
+  find "$JROOT"/[67] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_67.out 2> ${LOGDIR}/tarmerge_67.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[89]` ]]
+then
+  find "$JROOT"/[89] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_89.out 2> ${LOGDIR}/tarmerge_89.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[ab]` ]]
+then
+  find "$JROOT"/[ab] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_ab.out 2> ${LOGDIR}/tarmerge_ab.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[cd]` ]]
+then
+  find "$JROOT"/[cd] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_cd.out 2> ${LOGDIR}/tarmerge_cd.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[ef]` ]]
+then
+  find "$JROOT"/[ef] -name '*-BR' -type d -print0 | xargs -0 perl "$X_SCRIPTDIR"/tarmerge.perl > ${LOGDIR}/tarmerge_ef.out 2> ${LOGDIR}/tarmerge_ef.err &
+fi
+wait
+
+
+# ---------------------------------------
+# First round of non-utf8 filename fixups.
+
+echo  `date` ": fixing or removing non-UTF8 file names"
+"$X_SCRIPTDIR"/fixup-nonutf8 "$JROOT"
+
+
+if [ $INTERACTIVE == "on" ]
+then
+    echo    `date` 1>&2
+    echo    "Done merging main and buildResults." 1>&2
+    echo    "If you want to check for new non-utf8 filenames, you can do so now with something like:" 1>&2
+    echo    "  convmv -r -f utf8 -t utf8 $JROOT 2> /tmp/non-utf8-1" 1>&2
+    echo -n "About to build jarcentral. Continue? " 1>&2
+    confirm "[y/N]" || exit 0
+fi
+
+
+# ------------
+# Build jarcentral
+
+echo  `date` ": building jarcentral"
+mkdir -p "${JROOT}/jarcentral"
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[01]` ]]
+then
+  find "$JROOT"/[01] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_01.out 2> ${LOGDIR}/jarextractor_01.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[23]` ]]
+then
+  find "$JROOT"/[23] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_23.out 2> ${LOGDIR}/jarextractor_23.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[45]` ]]
+then
+  find "$JROOT"/[45] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_45.out 2> ${LOGDIR}/jarextractor_45.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[67]` ]]
+then
+  find "$JROOT"/[67] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_67.out 2> ${LOGDIR}/jarextractor_67.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[89]` ]]
+then
+  find "$JROOT"/[89] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_89.out 2> ${LOGDIR}/jarextractor_89.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[ab]` ]]
+then
+  find "$JROOT"/[ab] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_ab.out 2> ${LOGDIR}/jarextractor_ab.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[cd]` ]]
+then
+  find "$JROOT"/[cd] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_cd.out 2> ${LOGDIR}/jarextractor_cd.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[ef]` ]]
+then
+  find "$JROOT"/[ef] -type f -name '*.jar' -print0 | xargs -0 perl "$X_SCRIPTDIR"/jarextractor.perl > ${LOGDIR}/jarextractor_ef.out 2> ${LOGDIR}/jarextractor_ef.err &
+fi
+wait
+
+
+if [ $INTERACTIVE == "on" ]
+then
+    echo    `date` 1>&2
+    echo    "Done building jarcentral." 1>&2
+    echo    "If you want to check for new non-utf8 filenames from jar files, you can do so now with something like:" 1>&2
+    echo    "  convmv -r -f utf8 -t utf8 $JROOT 2> /tmp/non-utf8-2" 1>&2
+    echo -n "About to build classcentral. Continue? " 1>&2
+    confirm "[y/N]" || exit 0
+fi
+
+
+# ------------
+# build classcentral
+
+echo  `date` ": building classcentral" 1>&2
+#echo perl "$X_SCRIPTDIR"/build-classcentral.perl "$JROOT"
+#perl "$X_SCRIPTDIR"/build-classcentral.perl "$JROOT"
+
+mkdir -p "${JROOT}/classcentral"
+# The ratio of class files between [0-9a-f] and jarcentral is closer
+# to 2-to-6 than 3-to-5.
+# So we will run 2 chunk processes and 6 jarcentral processes.
+# Also, the greater digit chunks have more class files, so running
+# [0-8] and [9a-f] is more balanced.
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[0-8]` ]]
+then
+  find "$JROOT"/[0-8] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_01.out 2> ${LOGDIR}/classbuilder_01.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/[9a-f]` ]]
+then
+  find "$JROOT"/[9a-f] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_02.out 2> ${LOGDIR}/classbuilder_02.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[012]` ]]
+then
+  find $JROOT/jarcentral/[012] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_03.out 2> ${LOGDIR}/classbuilder_03.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[345]` ]]
+then
+  find "$JROOT"/jarcentral/[345] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_04.out 2> ${LOGDIR}/classbuilder_04.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[678]` ]]
+then
+  find "$JROOT"/jarcentral/[678] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_05.out 2> ${LOGDIR}/classbuilder_05.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[9ab]` ]]
+then
+  find $JROOT/jarcentral/[9ab] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_06.out 2> ${LOGDIR}/classbuilder_06.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[cd]` ]]
+then
+  find "$JROOT"/jarcentral/[cd] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_07.out 2> ${LOGDIR}/classbuilder_07.err &
+fi
+if [[ -n `shopt -s nullglob ; echo "$JROOT"/jarcentral/[ef]` ]]
+then
+  find "$JROOT"/jarcentral/[ef] -type f -name '*.class' -print0 | xargs -0 perl "$X_SCRIPTDIR"/build-classcentral.perl > ${LOGDIR}/classbuilder_08.out 2> ${LOGDIR}/classbuilder_08.err &
+fi
+wait
+
+echo  `date` ": done building classcentral" 1>&2
