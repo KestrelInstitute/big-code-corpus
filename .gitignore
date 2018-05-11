@@ -1,0 +1,22 @@
+## For Emacs:
+
+# Compiled
+*.elc
+
+# Packaging
+.cask
+
+# Backup files
+*~
+
+# Undo-tree save-files
+*.~undo-tree
+
+
+## For MacOS, or maybe just Emacs on MacOS
+
+# E.g., #README.md#
+\#*
+
+# E.g., .#README.md -> ericmccarthy@em-macbook2.kestrel.edu.3998
+.\#*
