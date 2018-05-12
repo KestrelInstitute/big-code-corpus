@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Find sizes of corpus tarballs and expanded sizes, as well as sizes of java-related files
+# and numbers of java-related files.
+
+# This script collects data from the given tarball and appends it to the given csv file.
+# (This script started with
+#   MUSE/tools/make-jcorpus/utilities/gather-tarball-data
+# and added information on .java, .class, and .jar files.)
+# Typically called from find on a tree of directories containing .tgz files.
+
+# Example call:
+#    sudo find /muse/xtreemfs-V4_2 -name '*_UCI_build.tgz' -exec ~/MUSE/tools/make-jcorpus/utilities/gather-tarball-java-data {} ~/MUSE/corpus/muse-V4_2-UCI_build-tarballs-2016-09-28.csv \;
+
+# Output Format:
+#  <tarball file name>  ,  <cksum of tarball>  ,  <size of tarball in bytes>  ,  <expanded size of tarball in bytes, as returned by du -sb> , <bytes of .java files> , <bytes of .class files> , <bytes of .jar files> , <number .java files> , <number .class files> , <number .jar files> , <tarball error flag>
+# Positionally:
+# 1. tarball file name
+# 2. cksum of tarball
+# 3. size of tarball in bytes
+# 4. expanded size of tarball in bytes, as returned by du -sb
+# 5. bytes of .java files
+# 6. bytes of .class files
+# 7. bytes of .jar files
+# 8. number .java files
+# 9. number .class files
+# 10. number .jar files
+# 11. tarball error flag
+
+TEMPDIR=/tmp/gather-tarball-data-$$
+
+rm -rf $TEMPDIR
+mkdir -p $TEMPDIR
+
+FILENAME=$1
+OUTPUT_FILENAME=$2
+
+CKSUM_OUTPUT=`cksum $FILENAME`
+CKSUM=`echo $CKSUM_OUTPUT | cut -d' ' -f 1`
+SIZE=`echo $CKSUM_OUTPUT | cut -d' ' -f 2`
+
+cd $TEMPDIR
+echo untarring $FILENAME
+tar xzf $FILENAME
+ERROR_FROM_TAR=$?
+
+EXPANDED_SIZE=0
+JAVA_BYTES=0
+CLASS_BYTES=0
+JAR_BYTES=0
+JAVA_NUM_FILES=0
+CLASS_NUM_FILES=0
+JAR_NUM_FILES=0
+
+if [[ $ERROR_FROM_TAR -eq 0 ]]
+then
+# Note, when I do this on an empty dir, it gives me "6".
+# I think a directory uses up more than 6 bytes.
+# If the rest of the du is accurate, then hopefully the extra directory makes the result only off by 6.
+	EXPANDED_SIZE=`du -sb $TEMPDIR | cut -f1`
+	JAVA_BYTES=`find $TEMPDIR -type f -name '*.java' -print0 | xargs -0 -n 1 wc -c | awk '{ SUM+= $1} END {print SUM}' `
+	CLASS_BYTES=`find $TEMPDIR -type f -name '*.class' -print0 | xargs -0 -n 1 wc -c | awk '{ SUM+= $1} END {print SUM}' `
+	JAR_BYTES=`find $TEMPDIR -type f -name '*.jar' -print0 | xargs -0 -n 1 wc -c | awk '{ SUM+= $1} END {print SUM}' `
+	JAVA_NUM_FILES=`find $TEMPDIR -type f -name '*.java' -exec echo 1 \; | wc -l`
+	CLASS_NUM_FILES=`find $TEMPDIR -type f -name '*.class' -exec echo 1 \; | wc -l`
+	JAR_NUM_FILES=`find $TEMPDIR -type f -name '*.jar' -exec echo 1 \; | wc -l`
+fi
+
+
+
+echo ${FILENAME},${CKSUM},${SIZE},${EXPANDED_SIZE},${JAVA_BYTES},${CLASS_BYTES},${JAR_BYTES},${JAVA_NUM_FILES},${CLASS_NUM_FILES},${JAR_NUM_FILES},${ERROR_FROM_TAR} >> ${OUTPUT_FILENAME}
+
+cd /tmp
+rm -rf $TEMPDIR

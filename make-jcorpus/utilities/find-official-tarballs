@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Checks that we have the tarballs listed in the given file.
+
+# Example call on "muse":
+#    ./find-official-tarballs ~/MUSE/corpus/official-MUSE-corpus-V1.txt /muse/xtreemfs2 > official-tarball-report.txt
+
+# Before using this utility, you might want to check that all the tarballs in
+# the directory are readable, for example:
+#   cd /muse/xtreemfs2
+#   find . -name '*.tgz' \! -perm 444 -ls | head
+# If any is a different permission, take a look to see what is wrong.
+
+# Outputs to stdout: one line for each tarball that differs from the official list,
+#   as well as a summary at the end.
+# Outputs to stderr: one dot for each thousand lines processed.
+
+official_list=$1
+our_root=$2
+
+NUM_LINES=0
+NUM_GOOD=0
+NUM_MISSING=0
+NUM_WRONG_CONTENTS=0
+
+
+
+function process_line () {
+  their_cksum=$1
+  their_size=$2
+  their_tarball=$3
+  our_tarball=`echo $their_tarball | sed 's|^/\(.*\)\(\(/[0-9a-f]\)\{8\}/\)\(.*\)$|'$our_root'\2\4|'`
+  let $((NUM_LINES++))
+  # output one dot to stderr for each 1000 lines
+  if [[ $(( 1000 * (NUM_LINES / 1000) )) -eq $NUM_LINES ]]
+  then
+    >&2 echo -n '.'
+  fi
+  if [[ ! -f $our_tarball ]]
+  then
+    echo "Missing tarball " $our_tarball
+    let $((NUM_MISSING++))
+  else
+    our_size=`stat --printf='%s' $our_tarball`
+    if [[ $our_size -ne $their_size ]]
+    then
+      echo "Wrong size (should be $their_size ) for tarball " $our_tarball
+      let $((NUM_WRONG_CONTENTS++))
+    else
+      # we could have also gotten the size from cksum, but this way
+      # avoids calling cksum if the size is wrong
+      our_cksum=`cksum $our_tarball | cut -d' ' -f1`
+      if [[ $our_cksum -ne $their_cksum ]]
+      then
+        echo "Wrong checksum (should be $their_cksum ) for tarball " $our_tarball
+        let $((NUM_WRONG_CONTENTS++))
+      else
+        let $((NUM_GOOD++))
+      fi
+    fi
+  fi
+  }
+
+while IFS= read -r line; do
+  # The following process_line command is no longer under the influence of IFS=
+  # so $line is separated into arguments by spaces.
+  # (Doing "$line" instead will give process_line a single argument with spaces in it.)
+  process_line $line
+done < "$official_list"
+
+echo '----------------------------------------------------------------'
+echo 'Summary of tarball status'
+echo 'Command run:'
+echo "  $0 $@"
+echo
+echo "Number of tarballs looked at:  $NUM_LINES"
+echo "Number that were correct here: $NUM_GOOD"
+echo "Number missing tarballs:  $NUM_MISSING"
+echo "Number with wrong contents: $NUM_WRONG_CONTENTS"
+echo
+echo '----------------------------------------------------------------'
