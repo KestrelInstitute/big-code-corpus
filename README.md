@@ -17,7 +17,7 @@ experiment repeatability.  For some good thoughts on this concept, see
 Find sizes of corpus tarballs and expanded sizes, as well as sizes of java-related files
 and numbers of java-related files.
 
-### find-official-tarballs
+### utilities/find-official-tarballs
 
 For checking that every tarball in a list of tarballs is accounted for.
 The list of tarballs in in the form of cksum outputs.
