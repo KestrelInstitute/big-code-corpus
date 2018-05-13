@@ -10,7 +10,15 @@
 # Typically called from find on a tree of directories containing .tgz files.
 
 # Example call:
-#    sudo find /muse/xtreemfs-V4_2 -name '*_UCI_build.tgz' -exec /path/to/utilities/gather-tarball-java-data {} /path/to/tarball-data/muse-V4_2-UCI_build-tarballs-YYYY-MM-DD.csv \;
+#    find /muse/xtreemfs-V4_2 -name '*_UCI_build.tgz' -exec /path/to/utilities/gather-tarball-java-data {} /full/path/to/tarball-data/muse-V4_2-UCI_build-tarballs-YYYY-MM-DD.csv \;
+# Another example call:
+#    cat ./my-list-of-tarballs | xargs -n 1 -I{} /path/to/utilities/gather-tarball-java-data {} /full/path/to/tarball-data/muse-V4_2-UCI_build-tarballs-YYYY-MM-DD.csv
+
+# Notes and Warnings:
+#   - the csv file must be an absolute path, or it gets written to /tmp and deleted
+#   - if there is not enough space in /tmp, you will see an error message, and the
+#     csv file will have a nonzero value for the last value (<tarball error flag>).
+#     You can change TEMPDIR below to somewhere with more space.
 
 # Output Format:
 #  <tarball file name>  ,  <cksum of tarball>  ,  <size of tarball in bytes>  ,  <expanded size of tarball in bytes, as returned by du -sb> , <bytes of .java files> , <bytes of .class files> , <bytes of .jar files> , <number .java files> , <number .class files> , <number .jar files> , <tarball error flag>
