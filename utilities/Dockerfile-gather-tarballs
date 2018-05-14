@@ -1,0 +1,15 @@
+FROM ubuntu:latest
+
+LABEL maintainer="Eric McCarthy"
+
+# probably don't even need this,
+# because the only stuff we use here are
+#   cksum, tar, du, cut, find, awk
+# RUN apt-get update
+
+COPY gather-tarball-java-data /home/gather-tarball-java-data
+
+COPY run-gather-tarballs /usr/bin/run-gather-tarballs
+
+RUN mkdir -p /input
+RUN mkdir -p /output

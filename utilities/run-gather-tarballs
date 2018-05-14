@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# This is a script for use in a docker container to call
+# gather-tarball-java-data repeatedly on the file names in stdin.
+
+# We are putting this script in /usr/bin/run-gather-tarballs
+# because it is in the search path
+
+# Takes one argument: the output file name (should end in ".csv"),
+# which is appended to "/output/".
+
+# Reads lines from stdin, and calls /home/gather-tarball-java-data on them.
+
+# The container's /output directory is created by the -v in the docker call
+# and shared with the given outside directory, so the output file is available
+# when this script exits.
+
+USAGE="Usage: $0 OUTFILE ..."
+
+if [ "$#" == "0" ]; then
+    echo "$USAGE"
+    exit 1
+fi
+
+OUTFILE=$1
+
+# Remove the output file if it exists.
+# Leaving an old one there would likely be confusing when
+# gather-tarball-java-data appends to it.
+rm -f /output/${OUTFILE}
+
+while read -r; do
+  /home/gather-tarball-java-data $REPLY /output/${OUTFILE}
+done
