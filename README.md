@@ -20,7 +20,7 @@ and numbers of java-related files.
 ### utilities/find-official-tarballs
 
 For checking that every tarball in a list of tarballs is accounted for.
-The list of tarballs in in the form of cksum outputs.
+The list of tarballs is in the form of cksum outputs.
 
 ### make-jcorpus
 [README.txt](make-jcorpus/README.txt)
