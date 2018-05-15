@@ -10,8 +10,12 @@
 # If JROOT already exists, it must be an empty directory.
 
 # Each SOURCE must be a full source file name or directory name.
+# If a directory name, it should end in a slash.
+#
 # The highest directory (in the first SOURCE (*2)) that contains the substring
-# "xtreemfs" is the "xtreemfs directory" (*1).
+# "xtreemfs" is the "xtreemfs directory" (*1) unless overridden by
+# the environment variable XTREEMFS_REPLACEMENT is defined. (*3)
+#
 # SOURCE can be a regular tarball, a buildResults tarball, or a directory
 # that is recursively searched (not following symlinks) for regular and
 # buildResults tarballs.
@@ -34,13 +38,24 @@
 #     are "buildResults tarballs".
 
 # (*2) A current limitation is that all the SOURCE locations
-# must be in the same xtreemfs directory.
+#      must be in the same xtreemfs directory.
+
+# (*3) For example, if the chunk dirs are directly under /data,
+#      then you could override the "xtreemfs" substring requirement by doing:
+#        export XTREEMFS_REPLACEMENT=/data/ make-new-jcorpus JROOT /data/
+#      or if you wanted to do a subchunk under /data,
+#        export XTREEMFS_REPLACEMENT=/data/ make-new-jcorpus JROOT /data/f/f/f/f/
 
 
 # exit if anything gets a non-zero status
 set -e
 # error if expanding an unset variable
-set -u
+# set -u
+## NOTE: we can no longer do the 'set -u' since we need to test the definedness
+## of XTREEMFS_REPLACEMENT without triggering an error.
+## However, once all the likely bash versions are 4.2 or greater,
+## we can reinstate the 'set -u' and change the test on the
+## environment variable to [[ -v XTREEMFS_REPLACEMENT ]].
 
 # current script dir  (currently "$MUSE"/tools/make-jcorpus )
 X_SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -114,14 +129,29 @@ then
 else
   CURR_ARG=$1; shift
 fi
-# The first arg determines the xtreemfs directory.
-if [[ "$CURR_ARG" =~ $FIRSTARGPAT ]]
-then
-  XROOT="${BASH_REMATCH[1]}"
-else
-  echo 'ERROR: path given does not have an xtreemfs directory: ' "$FIRSTARG"
-fi
 
+# If XTREEMFS_REPLACEMENT is specified, it must be a prefix of the first arg
+if [ -z "$XTREEMFS_REPLACEMENT" ]
+then
+  # The first arg determines the xtreemfs directory.
+  if [[ "$CURR_ARG" =~ $FIRSTARGPAT ]]
+  then
+    XROOT="${BASH_REMATCH[1]}"
+  else
+    echo 'ERROR: path given does not have an xtreemfs directory: ' "$CURR_ARG"
+    echo '       You may wish to specify a replacement by setting XTREEMFS_REPLACEMENT.'
+    exit 2
+  fi
+else
+  if [[ "$CURR_ARG" = "$XTREEMFS_REPLACEMENT"* ]]
+  then
+    XROOT="$XTREEMFS_REPLACEMENT"
+  else
+    echo 'ERROR: Environment variable XTREEMFS_REPLACEMENT does not match'
+    echo '       first path given: ' "$CURR_ARG"
+    exit 2
+  fi
+fi
 
 # collect tarballs
 # while [ $# -ne 0 ]
