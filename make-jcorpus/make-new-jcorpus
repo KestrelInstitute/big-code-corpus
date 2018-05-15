@@ -117,6 +117,13 @@ remember_tarball ()
   fi
 }
 
+
+# NOTE: One issue with this pattern is that if the first SOURCE arg
+# ends in "/xtreemfs" then it doesn't match the pattern, so we have to tell
+# people to use slashes to end their SOURCE arguments that are directories.
+# TODO: restructure so that the first arg can be just ".../xtreemfs",
+# in which case XROOT is set to the full first arg.
+#
 FIRSTARGPAT='^(.*/[^/]*xtreemfs[^/]*)/'
 
 # this next phrase is repeated in the main loop,
