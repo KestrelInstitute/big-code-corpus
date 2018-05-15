@@ -15,6 +15,7 @@
 # The highest directory (in the first SOURCE (*2)) that contains the substring
 # "xtreemfs" is the "xtreemfs directory" (*1) unless overridden by
 # the environment variable XTREEMFS_REPLACEMENT is defined. (*3)
+# $XTREEMFS_REPLACEMENT should not end in a slash.
 #
 # SOURCE can be a regular tarball, a buildResults tarball, or a directory
 # that is recursively searched (not following symlinks) for regular and
@@ -42,9 +43,9 @@
 
 # (*3) For example, if the chunk dirs are directly under /data,
 #      then you could override the "xtreemfs" substring requirement by doing:
-#        export XTREEMFS_REPLACEMENT=/data/ make-new-jcorpus JROOT /data/
+#        export XTREEMFS_REPLACEMENT=/data make-new-jcorpus JROOT /data/
 #      or if you wanted to do a subchunk under /data,
-#        export XTREEMFS_REPLACEMENT=/data/ make-new-jcorpus JROOT /data/f/f/f/f/
+#        export XTREEMFS_REPLACEMENT=/data make-new-jcorpus JROOT /data/f/f/f/f/
 
 
 # exit if anything gets a non-zero status
