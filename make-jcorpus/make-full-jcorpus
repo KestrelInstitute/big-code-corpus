@@ -36,7 +36,7 @@
 NUM_CPUS=8
 
 
-echo "Running make-full-jorpus in process $$."
+echo "Running make-full-jcorpus in process $$."
 echo "Use kill -HUP -$$ to kill this along with its subprocesses."
 
 usage(){
