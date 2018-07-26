@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Example call:
+# /home/mccarthy/MUSE/tools/make-jcorpus/make-full-jcorpus-addendum /muse/jcorpus /muse/jcorpus/logs
+
+# E.g., JROOT is /muse/jcorpus
+JROOT="$1"
+# E.g., LOGDIR is /muse/jcorpus/logs
+LOGDIR="$2"
+
+
+# current script dir  (currently "$MUSE"/tools/make-jcorpus )
+X_SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+# ------------
+# build classjars
+
+echo  `date` ": building classjars" 1>&2
+
+CLASSCENTRAL="${JROOT}/classcentral"
+CLASSJARS="${JROOT}/classjars"
+
+mkdir -p "$CLASSJARS"
+
+cd "$CLASSCENTRAL"
+
+find [01] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_01.out" 2> "${LOGDIR}/classjarrer_01.err" &
+find [23] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_23.out" 2> "${LOGDIR}/classjarrer_23.err" &
+find [45] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_45.out" 2> "${LOGDIR}/classjarrer_45.err" &
+find [67] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_67.out" 2> "${LOGDIR}/classjarrer_67.err" &
+find [89] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_89.out" 2> "${LOGDIR}/classjarrer_89.err" &
+find [ab] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_ab.out" 2> "${LOGDIR}/classjarrer_ab.err" &
+find [cd] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_cd.out" 2> "${LOGDIR}/classjarrer_cd.err" &
+find [ef] -type f -name '*.class' -print | xargs "${X_SCRIPTDIR}/jar-unjarred-classes" "$CLASSCENTRAL" "$CLASSJARS" > "${LOGDIR}/classjarrer_ef.out" 2> "${LOGDIR}/classjarrer_ef.err" &
+
+wait
+
+echo `date` ": done building jars for unjarred classes" 1>&2

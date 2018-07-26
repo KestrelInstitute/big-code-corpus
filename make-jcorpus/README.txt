@@ -179,5 +179,34 @@ contains 154 lines, the first 3 of which are
 Replacing all 154 class files by symbolic links saves a considerable
 amount of space.
 
-The downstream analysis tools all operate on classes from classcentral
+The downstream analysis tools generally operate on classes from classcentral
 to avoid redundant effort.
+
+
+
+jarring unjarred class files
+----------------------------
+
+Some downstream tools prefer to see jar files rather than class files,
+but some class files did not arrive packaged in a jar file.  To satisfy
+tools that only operate on jar files, we jar up the unjarred class files.
+By "unjarred" we really mean "not in jarcentral."  More details below.
+
+It would be most natural to jar related unjarred class files together
+in their project directories before creating jarcentral.  However, there
+are complications with this idea so for expediency we decided to build from
+classcentral at the end of make-jcorpus.
+
+We create a directory structure parallel to classcentral, called
+
+  classjars/
+
+so that each unjarred class file in classcentral/ has a corresponding
+jar file in classjars/ that contains it.  We ignore packages and
+create each jar file from the directory containing the class file.
+
+Note: an "unjarred" class file is defined as a class file that is not
+in any jar file in jarcentral.  If a jar file has a java source file
+in it, then the jar file is not put in jarcentral, and its class files
+will be considered "unjarred" and they will be put in individual jar
+files in classjars/.

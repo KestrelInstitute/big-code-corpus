@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# This script takes the classcentral root dir, the classjars root dir,
+# and any number of class file names relative to classcentral.
+# For each class file that did not come from any jar in jarcentral,
+# we make a jar with that class file and put it in the corresponding
+# location under classjars.
+
+# Note that a jar file that contains at least one java source file
+# does not get moved to jarcentral.
+
+# The purpose of this classjars tree is to enable analyzers that
+# take jar files as inputs.
+# In order for such an analyzer to analyze all class files,
+# it can analyze all jar files in jarcentral and all jar files in classjars.
+
+
+# Maybe TODO: convert this to python.
+
+CLASSROOT="$1"; shift
+# E.g., CLASSROOT is /muse/jcorpus/classcentral
+CLASSJARROOT="$1"; shift
+# E.g., CLASSJARROOT is /muse/jcorpus/classjars
+
+while [ $# -ne 0 ]
+do
+  # CLASSFILE is relative to CLASSROOT
+  CLASSFILE="$1" ; shift
+  ORIGINALSFILE="${CLASSFILE}.original-files"
+  # now ORIGINALSFILE is also relative to CLASSROOT
+
+  if grep -q "/jarcentral/.*\.jar\.DC/" "${CLASSROOT}/${ORIGINALSFILE}"
+  # Do nothing if this class file came from at least one jar in jarcentral
+  then :
+  else
+    # Make a jar file containing this one class file.
+    # FULLCLASSDIR is the directory in classcentral containing the class file
+    FULLCLASSDIR=`dirname "${CLASSROOT}/${CLASSFILE}"`
+    # FULLDESTDIR is the corresponding directory in classjars
+    FULLDESTDIR=`dirname "${CLASSJARROOT}/${CLASSFILE}"`
+
+    # CLASSBASENAME is the class file name without directories.
+    # (Since this is in classcentral, the basename is something like
+    #  44448ca5aca4994275b5e7f95069d1f3.class )
+    CLASSBASENAME=`basename "${CLASSFILE}"`
+
+    # Create the destination directory.
+    mkdir -p "${FULLDESTDIR}"
+    # Assemble the full jar file name.
+    JARFILE="${FULLDESTDIR}/${CLASSBASENAME%.*}.jar"
+    # (Note, "%.*" means delete everything from the right
+    #  up to and including the first dot.)
+
+    # cd to the directory containing the class file
+    # and create the jar file in the parallel directory
+    cd "${FULLCLASSDIR}"
+    jar cf "${JARFILE}" "${CLASSBASENAME}"
+  fi
+done

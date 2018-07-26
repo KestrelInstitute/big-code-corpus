@@ -407,3 +407,10 @@ fi
 wait
 
 echo  `date` ": done building classcentral" 1>&2
+
+
+# ------------
+# build jars from class files that are not already findable from jarcentral
+
+# Note that LOGDIR is a mktemp subdir of ../jcorpus/logs
+"${X_SCRIPTDIR}/make-full-jcorpus-addendum" "$JROOT" "$LOGDIR"
